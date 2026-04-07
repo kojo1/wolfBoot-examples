@@ -1,0 +1,7 @@
+# local/snippets/ifs_files.custom
+# Files to embed in the QNX IFS (in-memory filesystem, /proc/boot/).
+# Paths on the left are relative to the qnx-image-v2/ build directory.
+
+# Demo application v2
+[uid=0 gid=0 perms=0755]
+app_v2=../app_v2

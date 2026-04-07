@@ -1,0 +1,5 @@
+# local/snippets/post_start.custom
+# Commands executed after system startup.
+
+# Auto-start wolfBoot demo application v1
+/proc/boot/app_v1
