@@ -59,7 +59,16 @@
 
 /* wolfBoot Includes Start */
 #include "wolfboot/wolfboot.h"
+#include "wolfboot_status.h"
 /* wolfBoot Includes End */
+
+volatile boot_state_t g_boot_state         = BOOT_STATE_UNKNOWN;
+volatile uint32_t     g_boot_version       = 0;
+volatile uint32_t     g_update_version     = 0;
+volatile uint8_t      g_boot_state_byte    = 0xAA;
+volatile int          g_boot_state_rc      = -1;
+volatile uint8_t      g_update_state_byte  = 0xAA;
+volatile int          g_update_state_rc    = -1;
 
 /* Program Defines Start */
 
@@ -69,7 +78,7 @@
 
 /* Use DHCP auto IP assignment or static assignment */
 #undef  DHCP_ON
-#define DHCP_ON 0   /* Set to true (1) if you want auto assignment IP, */
+#define DHCP_ON 1   /* Set to true (1) if you want auto assignment IP, */
                     /* set false (0) for statically defined. */
                     /* Make sure to avoid IP conflicts on the network you */
                     /* assign this to, check the defaults before using. */
@@ -302,6 +311,36 @@ int startServer(void) {
 int main(void)
 {
     printf("\nRunning wolfSSL example from the %s!\n", CONFIG_BOARD);
+
+    {
+        uint8_t  bst = 0xAA, ust = 0xAA;
+        int      brc = wolfBoot_nsc_get_partition_state(PART_BOOT,   &bst);
+        int      urc = wolfBoot_nsc_get_partition_state(PART_UPDATE, &ust);
+        uint32_t bv  = wolfBoot_nsc_get_image_version(PART_BOOT);
+        uint32_t uv  = wolfBoot_nsc_get_image_version(PART_UPDATE);
+        boot_state_t cls = boot_state_classify(bv, uv, bst, brc, ust, urc);
+
+        g_boot_version       = bv;
+        g_update_version     = uv;
+        g_boot_state_byte    = bst;
+        g_boot_state_rc      = brc;
+        g_update_state_byte  = ust;
+        g_update_state_rc    = urc;
+        g_boot_state         = cls;
+
+        printf("[wolfBoot] BOOT v=%u state=0x%02x(rc=%d)  UPDATE v=%u state=0x%02x(rc=%d) -> %s\n",
+               (unsigned)bv, (unsigned)bst, brc,
+               (unsigned)uv, (unsigned)ust, urc,
+               boot_state_name(cls));
+
+        if (cls == BOOT_STATE_AWAITING_CONFIRM) {
+            printf("[wolfBoot] running new image, will call success() after self-test\n");
+            /* Demo: confirm immediately. Real apps should self-test first. */
+            wolfBoot_nsc_success();
+            g_boot_state = BOOT_STATE_NORMAL;
+            printf("[wolfBoot] success() called -> state confirmed\n");
+        }
+    }
 
     /* Start up the network */
     if (startNetwork() != 0){

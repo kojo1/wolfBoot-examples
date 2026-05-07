@@ -72,7 +72,7 @@
 #ifndef DEFAULT_MQTT_HOST
     /* Default MQTT host broker to use,
      * when none is specified in the examples */
-    #define DEFAULT_MQTT_HOST   "192.168.1.10"
+    #define DEFAULT_MQTT_HOST   "192.168.0.32"
     /* "iot.eclipse.org" */
     /* "broker.emqx.io" */
     /* "broker.hivemq.com" */

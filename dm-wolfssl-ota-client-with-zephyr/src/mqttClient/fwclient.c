@@ -60,6 +60,7 @@
 #include <stdint.h>
 #include <zephyr/kernel.h>
 #include "wolfboot/wolfboot.h"
+#include "wolfboot_status.h"
 #define SLOT1_NODE DT_NODELABEL(slot1_partition)
 #define SLOT1_OFFSET DT_REG_ADDR(SLOT1_NODE)
 #define SLOT1_SIZE DT_REG_SIZE(SLOT1_NODE)
@@ -717,6 +718,37 @@ int fwclient_test(MQTTCtx *mqttCtx)
 
             /* Read Loop */
             PRINTF("MQTT Waiting for message...");
+
+            {
+                static int s_status_published = 0;
+                if (!s_status_published) {
+                    static char status_buf[192];
+                    static MqttPublish status_pub;
+                    int n;
+                    int prc;
+
+                    s_status_published = 1;
+                    n = snprintf(status_buf, sizeof(status_buf),
+                        "{\"boot\":%u,\"update\":%u,\"state\":\"%s\","
+                        "\"raw\":%u,\"rc\":%d}",
+                        (unsigned)g_boot_version,
+                        (unsigned)g_update_version,
+                        boot_state_name(g_boot_state),
+                        (unsigned)g_update_state_byte,
+                        g_update_state_rc);
+                    XMEMSET(&status_pub, 0, sizeof(status_pub));
+                    status_pub.qos        = MQTT_QOS_0;
+                    status_pub.retain     = 1;
+                    status_pub.topic_name = "wolfMQTT/example/status";
+                    status_pub.packet_id  = mqtt_get_packetid();
+                    status_pub.buffer     = (byte *)status_buf;
+                    status_pub.total_len  = (word32)n;
+                    prc = MqttClient_Publish(&mqttCtx->client, &status_pub);
+                    PRINTF("MQTT Status Publish: %s (%d) -> %s",
+                           MqttClient_ReturnCodeToString(prc), prc,
+                           status_buf);
+                }
+            }
         }
         FALL_THROUGH;
 
